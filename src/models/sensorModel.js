@@ -8,8 +8,13 @@ const sensorSchema = new mongoose.Schema(
     port: { type: Number, required: true },
     url: { type: String, required: true },
     location: { type: String, required: true },
-    uniqueId: { type: String, required: true, unique: true }, 
-    status: { type: String, required: true, enum: ['active', 'inactive'], default: 'inactive' }, // Default status is inactive
+    uniqueId: { type: String, required: true, unique: true },
+    status: {
+      type: String,
+      required: true,
+      enum: ["active", "inactive"],
+      default: "inactive",
+    },
     isConnected: { type: Boolean, default: false },
     userId: {
       type: mongoose.Schema.Types.ObjectId,

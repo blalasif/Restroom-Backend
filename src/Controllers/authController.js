@@ -4,6 +4,7 @@ import authValidation from "../validationSchemas/authValidation.js";
 import { AsyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/ApiError.js";
 import TokenModel from "../models/tokenModel.js";
+import InspectorOfficer from "../models/inspectorModel.js";
 import {
   uploadToCloudinary,
   deleteFromCloudinary,
@@ -67,29 +68,56 @@ export const login = AsyncHandler(async (req, res, next) => {
   if (!email || !password)
     return next(new ApiError(400, "Please provide email and password"));
 
-  const user = await AuthModel.findOne({ email });
-  if (!user) return next(new ApiError(400, "Invalid email or password"));
+  let user = await AuthModel.findOne({ email });
 
-  const isPasswordValid = await bcrypt.compare(password, user.password);
-  if (!isPasswordValid) {
-    return next(new ApiError(400, "Invalid email or password"));
+  if (user) {
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid) {
+      return next(new ApiError(400, "Invalid email or password"));
+    }
+
+    const accessToken = generateAccessToken(user);
+    const refreshToken = await TokenModel.findOne({ userId: user._id });
+
+    if (!refreshToken) {
+      return next(
+        new ApiError(400, "Refresh token not found. Please LogIn again.")
+      );
+    }
+
+    setTokenCookies(res, accessToken, refreshToken.refreshToken);
+
+    return res.status(200).json({
+      success: true,
+      message: "Login successful as regular user",
+    });
   }
 
-  const accessToken = generateAccessToken(user);
-  const refreshToken = await TokenModel.findOne({ userId: user._id });
+  const inspector = await InspectorOfficer.findOne({ email });
 
-  if (!refreshToken) {
-    return next(
-      new ApiError(400, "Refresh token not found. Please LogIn again.")
-    );
+  if (inspector) {
+    const isPasswordValid = await bcrypt.compare(password, inspector.password);
+    if (!isPasswordValid) {
+      return next(new ApiError(400, "Invalid email or password"));
+    }
+
+    const accessToken = generateAccessToken(inspector);
+    const refreshToken = await TokenModel.findOne({ userId: inspector._id });
+
+    if (!refreshToken) {
+      return next(
+        new ApiError(400, "Refresh token not found. Please LogIn again.")
+      );
+    }
+
+    setTokenCookies(res, accessToken, refreshToken.refreshToken);
+
+    return res.status(200).json({
+      success: true,
+      message: "Login successful as inspector officer",
+    });
   }
-
-  setTokenCookies(res, accessToken, refreshToken.refreshToken);
-
-  res.status(200).json({
-    success: true,
-    message: "Login successful",
-  });
+  return next(new ApiError(400, "Invalid email or password"));
 });
 
 export const editProfile = AsyncHandler(async (req, res, next) => {

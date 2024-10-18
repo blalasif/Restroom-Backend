@@ -14,7 +14,7 @@ const authMiddleware = async (req, res, next) => {
   const refreshToken = req?.cookies?.refreshToken;
 
   if (!accessToken) {
-    return next(new ApiError(401, "Access Token Required"));
+    return next(new ApiError(401, "Unauthorized"));
   }
 
   try {
@@ -45,3 +45,4 @@ const authMiddleware = async (req, res, next) => {
 };
 
 export default authMiddleware;
+

@@ -3,7 +3,7 @@ import connectDB from "./src/Database/db.js";
 import authRoutes from './src/routes/authRoute.js'
 import sensorRoutes from './src/routes/sensorRoute.js'
 import buildingRoute from './src/routes/buildingRoute.js'
-import inspectionRoute from './src/routes/inspectionRoute.js'
+import inspectionRoute from './src/routes/inspectionReportRoute.js'
 import errorMiddleware from "./src/middleware/errorMiddleware.js";
 import cookieParser from "cookie-parser";
 const app = express();
@@ -27,8 +27,9 @@ app.use('/api/sensor', sensorRoutes)
 //building route
 
 app.use('/api/building', buildingRoute)
-//inspection routes
-app.use('/api/inspection',inspectionRoute)
+//inspection Report routes
+app.use('/api/inspection',inspectionRoute);
+
 
 app.get('/', (req, res) => {
     res.send("Hello Restroom Backend")

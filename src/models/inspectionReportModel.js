@@ -3,31 +3,27 @@ import { Schema, mongoose } from "mongoose";
 const InspectionReportSchema = new Schema({
     inspectorId: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'Auth',
+        ref: 'InspectorOfficer',
         required: true,
     },
-    reports: [
+    issues: [
         {
             restroomId: {
                 type: mongoose.Schema.Types.ObjectId,
                 ref: 'Restroom',
                 required: true,
             },
-            entries: [
-                {
-                    reportTitle: {
-                        type: String,
-                        required: true,
-                        trim: true,
-                    },
-                    rating: {
-                        type: Number,
-                        required: true,
-                        min: 1,
-                        max: 5,
-                    },
-                }
-            ]
+            title: {
+                type: String,
+                required: true,
+                trim: true,
+            },
+            rating: {
+                type: Number,
+                required: true,
+                min: 1,
+                max: 5,
+            },
         }
     ],
     createdAt: {

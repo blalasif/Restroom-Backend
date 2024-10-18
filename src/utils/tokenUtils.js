@@ -12,7 +12,7 @@ export const generateAccessToken = (user) => {
 export const generateRefreshToken = (user) => {
   const refreshToken = jwt.sign(
     { id: user._id, role: user.role },
-    process.env.REFRESH_TOKEN_SECRET, 
+    process.env.REFRESH_TOKEN_SECRET,
     { expiresIn: "2d" }
   );
   return refreshToken;
@@ -37,3 +37,4 @@ export const setTokenCookies = (res, accessToken, refreshToken) => {
 export const removeRefreshToken = async (userId) => {
   await TokenModel.findOneAndDelete({ userId });
 };
+

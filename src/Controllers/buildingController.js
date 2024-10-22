@@ -151,7 +151,6 @@ export const getAllBuildings = AsyncHandler(async (req, res, next) => {
   const ownerId = req.user.id;
 
   const buildings = await Building.find({ buildingOwner: ownerId });
-
   if (!buildings || buildings.length === 0)
     return next(new ApiError(404, "No Building Regards this User"));
 

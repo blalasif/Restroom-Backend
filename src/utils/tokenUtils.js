@@ -34,7 +34,14 @@ export const setTokenCookies = (res, accessToken, refreshToken) => {
   });
 };
 
-export const removeRefreshToken = async (userId) => {
-  await TokenModel.findOneAndDelete({ userId });
-};
+// export const removeRefreshToken = async (userId) => {
+//   await TokenModel.findOneAndDelete({ userId });
+// };
 
+
+export const cleanExpiredTokens = async () => {
+  const now = new Date();
+  await TokenModel.deleteMany({
+    expiresAt: { $lt: now }, 
+  });
+};

@@ -15,6 +15,111 @@ import {
   setTokenCookies,
 } from "../utils/tokenUtils.js";
 
+// export const signup = AsyncHandler(async (req, res, next) => {
+//   const { error } = authValidation(req.body);
+//   if (error) return next(new ApiError(400, error.details[0].message));
+
+//   const {
+//     fullName,
+//     email,
+//     password,
+//     role,
+//     phoneNumber,
+//     dob,
+//     gender,
+//     nationality,
+//   } = req.body;
+
+//   const existingUser = await AuthModel.findOne({ email });
+//   if (existingUser) return next(new ApiError(400, "User already exists"));
+
+//   const hashedPassword = await bcrypt.hash(password, 10);
+
+//   const user = await AuthModel.create({
+//     fullName,
+//     email,
+//     password: hashedPassword,
+//     role,
+//     phoneNumber,
+//     dob,
+//     gender,
+//     nationality,
+//   });
+
+//   const accessToken = generateAccessToken(user);
+//   const refreshToken = generateRefreshToken(user);
+
+//   await TokenModel.create({
+//     userId: user._id,
+//     refreshToken: refreshToken,
+//   });
+
+//   setTokenCookies(res, accessToken, refreshToken);
+
+//   res.status(201).json({
+//     success: true,
+//     message: "Register Successfully",
+//   });
+// });
+
+// export const login = AsyncHandler(async (req, res, next) => {
+//   const { email, password } = req.body;
+
+//   if (!email || !password)
+//     return next(new ApiError(400, "Please provide email and password"));
+
+//   let user = await AuthModel.findOne({ email });
+
+//   if (user) {
+//     const isPasswordValid = await bcrypt.compare(password, user.password);
+//     if (!isPasswordValid) {
+//       return next(new ApiError(400, "Invalid email or password"));
+//     }
+
+//     const accessToken = generateAccessToken(user);
+//     const refreshToken = await TokenModel.findOne({ userId: user._id });
+
+//     if (!refreshToken) {
+//       return next(
+//         new ApiError(400, "Refresh token not found. Please LogIn again.")
+//       );
+//     }
+
+//     setTokenCookies(res, accessToken, refreshToken.refreshToken);
+
+//     return res.status(200).json({
+//       success: true,
+//       message: "Login successful as regular user",
+//     });
+//   }
+
+//   const inspector = await InspectorOfficer.findOne({ email });
+
+//   if (inspector) {
+//     const isPasswordValid = await bcrypt.compare(password, inspector.password);
+//     if (!isPasswordValid) {
+//       return next(new ApiError(400, "Invalid email or password"));
+//     }
+
+//     const accessToken = generateAccessToken(inspector);
+//     const refreshToken = await TokenModel.findOne({ userId: inspector._id });
+
+//     if (!refreshToken) {
+//       return next(
+//         new ApiError(400, "Refresh token not found. Please LogIn again.")
+//       );
+//     }
+
+//     setTokenCookies(res, accessToken, refreshToken.refreshToken);
+
+//     return res.status(200).json({
+//       success: true,
+//       message: "Login successful as inspector officer",
+//     });
+//   }
+//   return next(new ApiError(400, "Invalid email or password"));
+// });
+
 export const signup = AsyncHandler(async (req, res, next) => {
   const { error } = authValidation(req.body);
   if (error) return next(new ApiError(400, error.details[0].message));
@@ -52,6 +157,7 @@ export const signup = AsyncHandler(async (req, res, next) => {
   await TokenModel.create({
     userId: user._id,
     refreshToken: refreshToken,
+    expiresAt: Date.now() + 2 * 24 * 60 * 60 * 1000,
   });
 
   setTokenCookies(res, accessToken, refreshToken);
@@ -72,18 +178,16 @@ export const login = AsyncHandler(async (req, res, next) => {
 
   if (user) {
     const isPasswordValid = await bcrypt.compare(password, user.password);
-    if (!isPasswordValid) {
+    if (!isPasswordValid)
       return next(new ApiError(400, "Invalid email or password"));
-    }
 
     const accessToken = generateAccessToken(user);
     const refreshToken = await TokenModel.findOne({ userId: user._id });
 
-    if (!refreshToken) {
+    if (!refreshToken)
       return next(
         new ApiError(400, "Refresh token not found. Please LogIn again.")
       );
-    }
 
     setTokenCookies(res, accessToken, refreshToken.refreshToken);
 
@@ -97,18 +201,16 @@ export const login = AsyncHandler(async (req, res, next) => {
 
   if (inspector) {
     const isPasswordValid = await bcrypt.compare(password, inspector.password);
-    if (!isPasswordValid) {
+    if (!isPasswordValid)
       return next(new ApiError(400, "Invalid email or password"));
-    }
 
     const accessToken = generateAccessToken(inspector);
     const refreshToken = await TokenModel.findOne({ userId: inspector._id });
 
-    if (!refreshToken) {
+    if (!refreshToken)
       return next(
         new ApiError(400, "Refresh token not found. Please LogIn again.")
       );
-    }
 
     setTokenCookies(res, accessToken, refreshToken.refreshToken);
 

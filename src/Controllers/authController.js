@@ -15,111 +15,6 @@ import {
   setTokenCookies,
 } from "../utils/tokenUtils.js";
 
-// export const signup = AsyncHandler(async (req, res, next) => {
-//   const { error } = authValidation(req.body);
-//   if (error) return next(new ApiError(400, error.details[0].message));
-
-//   const {
-//     fullName,
-//     email,
-//     password,
-//     role,
-//     phoneNumber,
-//     dob,
-//     gender,
-//     nationality,
-//   } = req.body;
-
-//   const existingUser = await AuthModel.findOne({ email });
-//   if (existingUser) return next(new ApiError(400, "User already exists"));
-
-//   const hashedPassword = await bcrypt.hash(password, 10);
-
-//   const user = await AuthModel.create({
-//     fullName,
-//     email,
-//     password: hashedPassword,
-//     role,
-//     phoneNumber,
-//     dob,
-//     gender,
-//     nationality,
-//   });
-
-//   const accessToken = generateAccessToken(user);
-//   const refreshToken = generateRefreshToken(user);
-
-//   await TokenModel.create({
-//     userId: user._id,
-//     refreshToken: refreshToken,
-//   });
-
-//   setTokenCookies(res, accessToken, refreshToken);
-
-//   res.status(201).json({
-//     success: true,
-//     message: "Register Successfully",
-//   });
-// });
-
-// export const login = AsyncHandler(async (req, res, next) => {
-//   const { email, password } = req.body;
-
-//   if (!email || !password)
-//     return next(new ApiError(400, "Please provide email and password"));
-
-//   let user = await AuthModel.findOne({ email });
-
-//   if (user) {
-//     const isPasswordValid = await bcrypt.compare(password, user.password);
-//     if (!isPasswordValid) {
-//       return next(new ApiError(400, "Invalid email or password"));
-//     }
-
-//     const accessToken = generateAccessToken(user);
-//     const refreshToken = await TokenModel.findOne({ userId: user._id });
-
-//     if (!refreshToken) {
-//       return next(
-//         new ApiError(400, "Refresh token not found. Please LogIn again.")
-//       );
-//     }
-
-//     setTokenCookies(res, accessToken, refreshToken.refreshToken);
-
-//     return res.status(200).json({
-//       success: true,
-//       message: "Login successful as regular user",
-//     });
-//   }
-
-//   const inspector = await InspectorOfficer.findOne({ email });
-
-//   if (inspector) {
-//     const isPasswordValid = await bcrypt.compare(password, inspector.password);
-//     if (!isPasswordValid) {
-//       return next(new ApiError(400, "Invalid email or password"));
-//     }
-
-//     const accessToken = generateAccessToken(inspector);
-//     const refreshToken = await TokenModel.findOne({ userId: inspector._id });
-
-//     if (!refreshToken) {
-//       return next(
-//         new ApiError(400, "Refresh token not found. Please LogIn again.")
-//       );
-//     }
-
-//     setTokenCookies(res, accessToken, refreshToken.refreshToken);
-
-//     return res.status(200).json({
-//       success: true,
-//       message: "Login successful as inspector officer",
-//     });
-//   }
-//   return next(new ApiError(400, "Invalid email or password"));
-// });
-
 export const signup = AsyncHandler(async (req, res, next) => {
   const { error } = authValidation(req.body);
   if (error) return next(new ApiError(400, error.details[0].message));
@@ -189,7 +84,9 @@ export const login = AsyncHandler(async (req, res, next) => {
         new ApiError(400, "Refresh token not found. Please LogIn again.")
       );
 
-    setTokenCookies(res, accessToken, refreshToken.refreshToken);
+    await setTokenCookies(res, accessToken, refreshToken.refreshToken);
+
+    console.log("i am logged in ");
 
     return res.status(200).json({
       success: true,
@@ -317,5 +214,41 @@ export const changePassword = AsyncHandler(async (req, res, next) => {
   res.status(200).json({
     success: true,
     message: "Password changed successfully.",
+  });
+});
+
+export const getProfile = AsyncHandler(async (req, res, next) => {
+  const userId = req.user.id;
+
+  const userProfile = await AuthModel.findById(userId).select(
+    "-__v -password -email"
+  );
+
+  if (!userProfile) {
+    return next(new ApiError(404, "User not found."));
+  }
+
+  res.status(200).json({
+    success: true,
+    user: userProfile,
+  });
+});
+
+export const logout = AsyncHandler(async (req, res, next) => {
+  res.clearCookie("accessToken", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "strict",
+  });
+
+  res.clearCookie("refreshToken", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "strict",
+  });
+
+  res.status(200).json({
+    success: true,
+    message: "Logged out successfully.",
   });
 });

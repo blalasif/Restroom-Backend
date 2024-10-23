@@ -6,9 +6,16 @@ import buildingRoute from './src/routes/buildingRoute.js'
 import inspectionRoute from './src/routes/inspectionReportRoute.js'
 import errorMiddleware from "./src/middleware/errorMiddleware.js";
 import cookieParser from "cookie-parser";
+import cors from 'cors'
+
 const app = express();
 
 const PORT = process.env.PORT || 5000;
+
+app.use(cors({
+    origin: "http://localhost:5173/",
+    credentials: true,
+}));
 
 
 connectDB();

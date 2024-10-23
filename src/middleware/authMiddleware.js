@@ -59,8 +59,10 @@ const generateAccessToken = (user) => {
 };
 
 const authMiddleware = async (req, res, next) => {
-  const accessToken = req.cookies.accessToken;
+  const accessToken = req?.cookies?.accessToken;
   const refreshToken = req?.cookies?.refreshToken;
+
+  console.log("accesss token", accessToken);
 
   if (!accessToken) {
     return next(new ApiError(401, "Unauthorized"));

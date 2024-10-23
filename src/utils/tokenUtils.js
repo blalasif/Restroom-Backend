@@ -21,8 +21,11 @@ export const generateRefreshToken = (user) => {
 export const setTokenCookies = (res, accessToken, refreshToken) => {
   res.cookie("accessToken", accessToken, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",
+    secure: true,
+    sameSite: "none",
+
+    // secure: process.env.NODE_ENV === "production",
+    // sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
     maxAge: 15 * 60 * 1000,
   });
 
@@ -38,10 +41,9 @@ export const setTokenCookies = (res, accessToken, refreshToken) => {
 //   await TokenModel.findOneAndDelete({ userId });
 // };
 
-
 export const cleanExpiredTokens = async () => {
   const now = new Date();
   await TokenModel.deleteMany({
-    expiresAt: { $lt: now }, 
+    expiresAt: { $lt: now },
   });
 };

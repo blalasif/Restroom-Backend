@@ -1,5 +1,4 @@
 import jwt from "jsonwebtoken";
-import TokenModel from "../models/tokenModel.js";
 
 export const generateAccessToken = (user) => {
   return jwt.sign(
@@ -10,22 +9,18 @@ export const generateAccessToken = (user) => {
 };
 
 export const generateRefreshToken = (user) => {
-  const refreshToken = jwt.sign(
+  return jwt.sign(
     { id: user._id, role: user.role },
     process.env.REFRESH_TOKEN_SECRET,
     { expiresIn: "2d" }
   );
-  return refreshToken;
 };
 
 export const setTokenCookies = (res, accessToken, refreshToken) => {
   res.cookie("accessToken", accessToken, {
     httpOnly: true,
-    secure: true,
-    sameSite: "none",
-
-    // secure: process.env.NODE_ENV === "production",
-    // sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "strict",
     maxAge: 15 * 60 * 1000,
   });
 
@@ -34,16 +29,5 @@ export const setTokenCookies = (res, accessToken, refreshToken) => {
     secure: process.env.NODE_ENV === "production",
     sameSite: "strict",
     maxAge: 2 * 24 * 60 * 60 * 1000,
-  });
-};
-
-// export const removeRefreshToken = async (userId) => {
-//   await TokenModel.findOneAndDelete({ userId });
-// };
-
-export const cleanExpiredTokens = async () => {
-  const now = new Date();
-  await TokenModel.deleteMany({
-    expiresAt: { $lt: now },
   });
 };

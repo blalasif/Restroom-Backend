@@ -15,6 +15,110 @@ import {
   setTokenCookies,
 } from "../utils/tokenUtils.js";
 
+// export const signup = AsyncHandler(async (req, res, next) => {
+//   const { error } = authValidation(req.body);
+//   if (error) return next(new ApiError(400, error.details[0].message));
+
+//   const {
+//     fullName,
+//     email,
+//     password,
+//     role,
+//     phoneNumber,
+//     dob,
+//     gender,
+//     nationality,
+//   } = req.body;
+
+//   const existingUser = await AuthModel.findOne({ email });
+//   if (existingUser) return next(new ApiError(400, "User already exists"));
+
+//   const hashedPassword = await bcrypt.hash(password, 10);
+
+//   const user = await AuthModel.create({
+//     fullName,
+//     email,
+//     password: hashedPassword,
+//     role,
+//     phoneNumber,
+//     dob,
+//     gender,
+//     nationality,
+//   });
+
+//   const accessToken = generateAccessToken(user);
+//   const refreshToken = generateRefreshToken(user);
+
+//   await TokenModel.create({
+//     userId: user._id,
+//     refreshToken: refreshToken,
+//     expiresAt: Date.now() + 2 * 24 * 60 * 60 * 1000,
+//   });
+
+//   setTokenCookies(res, accessToken, refreshToken);
+
+//   res.status(201).json({
+//     success: true,
+//     message: "Register Successfully",
+//   });
+// });
+
+// export const login = AsyncHandler(async (req, res, next) => {
+//   const { email, password } = req.body;
+
+//   if (!email || !password)
+//     return next(new ApiError(400, "Please provide email and password"));
+
+//   let user = await AuthModel.findOne({ email });
+
+//   if (user) {
+//     const isPasswordValid = await bcrypt.compare(password, user.password);
+//     if (!isPasswordValid)
+//       return next(new ApiError(400, "Invalid email or password"));
+
+//     const accessToken = generateAccessToken(user);
+//     const refreshToken = await TokenModel.findOne({ userId: user._id });
+
+//     if (!refreshToken)
+//       return next(
+//         new ApiError(400, "Refresh token not found. Please LogIn again.")
+//       );
+
+//     await setTokenCookies(res, accessToken, refreshToken.refreshToken);
+
+//     console.log("i am logged in ");
+
+//     return res.status(200).json({
+//       success: true,
+//       message: "Login successful as regular user",
+//     });
+//   }
+
+//   const inspector = await InspectorOfficer.findOne({ email });
+
+//   if (inspector) {
+//     const isPasswordValid = await bcrypt.compare(password, inspector.password);
+//     if (!isPasswordValid)
+//       return next(new ApiError(400, "Invalid email or password"));
+
+//     const accessToken = generateAccessToken(inspector);
+//     const refreshToken = await TokenModel.findOne({ userId: inspector._id });
+
+//     if (!refreshToken)
+//       return next(
+//         new ApiError(400, "Refresh token not found. Please LogIn again.")
+//       );
+
+//     setTokenCookies(res, accessToken, refreshToken.refreshToken);
+
+//     return res.status(200).json({
+//       success: true,
+//       message: "Login successful as inspector officer",
+//     });
+//   }
+//   return next(new ApiError(400, "Invalid email or password"));
+// });
+
 export const signup = AsyncHandler(async (req, res, next) => {
   const { error } = authValidation(req.body);
   if (error) return next(new ApiError(400, error.details[0].message));
@@ -49,44 +153,48 @@ export const signup = AsyncHandler(async (req, res, next) => {
   const accessToken = generateAccessToken(user);
   const refreshToken = generateRefreshToken(user);
 
-  await TokenModel.create({
-    userId: user._id,
-    refreshToken: refreshToken,
-    expiresAt: Date.now() + 2 * 24 * 60 * 60 * 1000,
-  });
-
   setTokenCookies(res, accessToken, refreshToken);
 
   res.status(201).json({
     success: true,
-    message: "Register Successfully",
+    message: "Registered Successfully",
   });
 });
 
 export const login = AsyncHandler(async (req, res, next) => {
   const { email, password } = req.body;
 
-  if (!email || !password)
+  if (!email || !password) {
     return next(new ApiError(400, "Please provide email and password"));
+  }
 
+  // First, check if the user is a regular user
   let user = await AuthModel.findOne({ email });
-
   if (user) {
     const isPasswordValid = await bcrypt.compare(password, user.password);
-    if (!isPasswordValid)
+    if (!isPasswordValid) {
       return next(new ApiError(400, "Invalid email or password"));
+    }
 
+    // Generate access token
     const accessToken = generateAccessToken(user);
-    const refreshToken = await TokenModel.findOne({ userId: user._id });
 
-    if (!refreshToken)
-      return next(
-        new ApiError(400, "Refresh token not found. Please LogIn again.")
-      );
+    // Check if a refresh token exists for the user in the database
+    let refreshTokenData = await TokenModel.findOne({ userId: user._id });
+    let refreshToken;
 
-    await setTokenCookies(res, accessToken, refreshToken.refreshToken);
+    if (refreshTokenData) {
+      refreshToken = refreshTokenData.refreshToken;
+    } else {
+      // Generate and save a new refresh token if none exists
+      refreshToken = generateRefreshToken(user);
+      await TokenModel.create({ userId: user._id, refreshToken });
+    }
 
-    console.log("i am logged in ");
+    // Set both tokens as cookies
+    setTokenCookies(res, accessToken, refreshToken);
+
+    console.log("User logged in successfully");
 
     return res.status(200).json({
       success: true,
@@ -94,28 +202,41 @@ export const login = AsyncHandler(async (req, res, next) => {
     });
   }
 
+  // Next, check if the user is an inspector officer
   const inspector = await InspectorOfficer.findOne({ email });
-
   if (inspector) {
     const isPasswordValid = await bcrypt.compare(password, inspector.password);
-    if (!isPasswordValid)
+    if (!isPasswordValid) {
       return next(new ApiError(400, "Invalid email or password"));
+    }
 
+    // Generate access token
     const accessToken = generateAccessToken(inspector);
-    const refreshToken = await TokenModel.findOne({ userId: inspector._id });
 
-    if (!refreshToken)
-      return next(
-        new ApiError(400, "Refresh token not found. Please LogIn again.")
-      );
+    // Check if a refresh token exists for the inspector officer
+    let refreshTokenData = await TokenModel.findOne({ userId: inspector._id });
+    let refreshToken;
 
-    setTokenCookies(res, accessToken, refreshToken.refreshToken);
+    if (refreshTokenData) {
+      refreshToken = refreshTokenData.refreshToken;
+    } else {
+      // Generate and save a new refresh token if none exists
+      refreshToken = generateRefreshToken(inspector);
+      await TokenModel.create({ userId: inspector._id, refreshToken });
+    }
+
+    // Set both tokens as cookies
+    setTokenCookies(res, accessToken, refreshToken);
+
+    console.log("Inspector officer logged in successfully");
 
     return res.status(200).json({
       success: true,
       message: "Login successful as inspector officer",
     });
   }
+
+  // If no user or inspector officer is found with that email
   return next(new ApiError(400, "Invalid email or password"));
 });
 
@@ -127,11 +248,13 @@ export const editProfile = AsyncHandler(async (req, res, next) => {
   const updatedUser = await AuthModel.findById(userId);
   if (!updatedUser) return next(new ApiError(404, "User not found."));
 
-  if (fullName) updatedUser.fullName = fullName;
-  if (dob) updatedUser.dob = dob;
-  if (nationality) updatedUser.nationality = nationality;
-  if (gender) updatedUser.gender = gender;
-  if (phoneNumber) updatedUser.phoneNumber = phoneNumber;
+  const getSingleValue = (value) => Array.isArray(value) ? value[0] : value;
+
+  if (fullName) updatedUser.fullName = getSingleValue(fullName);
+  if (dob) updatedUser.dob = new Date(getSingleValue(dob));
+  if (nationality) updatedUser.nationality = getSingleValue(nationality);
+  if (gender) updatedUser.gender = getSingleValue(gender);
+  if (phoneNumber) updatedUser.phoneNumber = getSingleValue(phoneNumber);
 
   if (req.file) {
     try {
@@ -164,7 +287,7 @@ export const editProfile = AsyncHandler(async (req, res, next) => {
   await updatedUser.save();
 
   const fetchedUser = await AuthModel.findById(userId).select(
-    "-__v -password,-email"
+    "-__v -password -email"
   );
   if (!fetchedUser)
     return next(new ApiError(404, "User not found after update."));
@@ -179,6 +302,7 @@ export const editProfile = AsyncHandler(async (req, res, next) => {
     },
   });
 });
+
 
 export const changePassword = AsyncHandler(async (req, res, next) => {
   const userId = req.user.id;
@@ -221,7 +345,7 @@ export const getProfile = AsyncHandler(async (req, res, next) => {
   const userId = req.user.id;
 
   const userProfile = await AuthModel.findById(userId).select(
-    "-__v -password -email"
+    "-__v -password"
   );
 
   if (!userProfile) {

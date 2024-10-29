@@ -1,4 +1,5 @@
 import express from "express";
+import cors from "cors";
 import {
   addSensor,
   deleteSensor,
@@ -8,6 +9,14 @@ import {
 } from "../Controllers/sensorController.js";
 import authMiddleware from "../middleware/authMiddleware.js";
 const app = express();
+app.use(
+  cors({
+    origin: "http://localhost:5173",
+    methods: ["GET", "POST", "DELETE", "PUT", "OPTIONS"],
+    credentials: true,
+    preflightContinue: true,
+  })
+);
 
 app.post("/create", authMiddleware, addSensor);
 

@@ -43,18 +43,3 @@ export const buildingValidation = Joi.object({
   }),
 });
 
-// export const updateBuildingValidation = Joi.object({
-//   buildingName: Joi.string().optional(),
-//   buildingType: Joi.string()
-//     .valid("Public", "Private", "Commercial", "Industrial", "Mixed-Use")
-//     .optional(),
-//   location: Joi.string().optional(),
-//   area: Joi.string().optional(),
-//   totalFloors: Joi.number().integer().optional(),
-//   totalRestrooms: Joi.number().integer().optional(),
-//   buildingManager: Joi.string().optional(),
-//   contact: Joi.string().optional(),
-//   restrooms: Joi.string().optional(),
-//   Longitude: Joi.number().required(),
-//   Latitude: Joi.number().required(),
-// });

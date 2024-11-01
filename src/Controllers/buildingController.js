@@ -10,6 +10,7 @@ import { buildingValidation } from "../validationSchemas/buildingValidation.js";
 
 export const addBuilding = AsyncHandler(async (req, res, next) => {
   const { thumbnail, modalImage, restroomImages } = req.files || {};
+  console.log("Images on backend", req.files);
 
   const {
     buildingName,

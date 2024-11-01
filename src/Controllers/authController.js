@@ -5,6 +5,9 @@ import { AsyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/ApiError.js";
 import TokenModel from "../models/tokenModel.js";
 import InspectorOfficer from "../models/inspectorModel.js";
+import moment from "moment";
+import multer from "multer";
+
 import {
   uploadToCloudinary,
   deleteFromCloudinary,
@@ -14,7 +17,6 @@ import {
   generateRefreshToken,
   setTokenCookies,
 } from "../utils/tokenUtils.js";
-
 
 export const signup = AsyncHandler(async (req, res, next) => {
   const { error } = authValidation(req.body);
@@ -65,7 +67,6 @@ export const login = AsyncHandler(async (req, res, next) => {
     return next(new ApiError(400, "Please provide email and password"));
   }
 
-  // First, check if the user is a regular user
   let user = await AuthModel.findOne({ email });
   if (user) {
     const isPasswordValid = await bcrypt.compare(password, user.password);
@@ -73,22 +74,18 @@ export const login = AsyncHandler(async (req, res, next) => {
       return next(new ApiError(400, "Invalid email or password"));
     }
 
-    // Generate access token
     const accessToken = generateAccessToken(user);
 
-    // Check if a refresh token exists for the user in the database
     let refreshTokenData = await TokenModel.findOne({ userId: user._id });
     let refreshToken;
 
     if (refreshTokenData) {
       refreshToken = refreshTokenData.refreshToken;
     } else {
-      // Generate and save a new refresh token if none exists
       refreshToken = generateRefreshToken(user);
       await TokenModel.create({ userId: user._id, refreshToken });
     }
 
-    // Set both tokens as cookies
     setTokenCookies(res, accessToken, refreshToken);
 
     console.log("User logged in successfully");
@@ -99,7 +96,6 @@ export const login = AsyncHandler(async (req, res, next) => {
     });
   }
 
-  // Next, check if the user is an inspector officer
   const inspector = await InspectorOfficer.findOne({ email });
   if (inspector) {
     const isPasswordValid = await bcrypt.compare(password, inspector.password);
@@ -107,22 +103,18 @@ export const login = AsyncHandler(async (req, res, next) => {
       return next(new ApiError(400, "Invalid email or password"));
     }
 
-    // Generate access token
     const accessToken = generateAccessToken(inspector);
 
-    // Check if a refresh token exists for the inspector officer
     let refreshTokenData = await TokenModel.findOne({ userId: inspector._id });
     let refreshToken;
 
     if (refreshTokenData) {
       refreshToken = refreshTokenData.refreshToken;
     } else {
-      // Generate and save a new refresh token if none exists
       refreshToken = generateRefreshToken(inspector);
       await TokenModel.create({ userId: inspector._id, refreshToken });
     }
 
-    // Set both tokens as cookies
     setTokenCookies(res, accessToken, refreshToken);
 
     console.log("Inspector officer logged in successfully");
@@ -133,73 +125,93 @@ export const login = AsyncHandler(async (req, res, next) => {
     });
   }
 
-  // If no user or inspector officer is found with that email
   return next(new ApiError(400, "Invalid email or password"));
 });
 
-export const editProfile = AsyncHandler(async (req, res, next) => {
-  const userId = req.user.id;
 
-  const { fullName, dob, nationality, gender, phoneNumber } = req.body;
+const storage = multer.memoryStorage(); // Use memory storage for uploading to Cloudinary
+const upload = multer({ storage: storage });
 
-  const updatedUser = await AuthModel.findById(userId);
-  if (!updatedUser) return next(new ApiError(404, "User not found."));
+// Edit Profile endpoint
+export const editProfile = [
+  upload.single("profileImage"), // Middleware for handling file upload
+  AsyncHandler(async (req, res, next) => {
+    const userId = req.user.id;
+    console.log("files", req.file);
 
-  const getSingleValue = (value) => Array.isArray(value) ? value[0] : value;
+    const { fullName, dob, nationality, gender, phoneNumber } = req.body;
 
-  if (fullName) updatedUser.fullName = getSingleValue(fullName);
-  if (dob) updatedUser.dob = new Date(getSingleValue(dob));
-  if (nationality) updatedUser.nationality = getSingleValue(nationality);
-  if (gender) updatedUser.gender = getSingleValue(gender);
-  if (phoneNumber) updatedUser.phoneNumber = getSingleValue(phoneNumber);
+    const updatedUser = await AuthModel.findById(userId);
+    if (!updatedUser) return next(new ApiError(404, "User not found."));
 
-  if (req.file) {
-    try {
-      if (updatedUser.profileImagePublicId) {
-        console.log(
-          "Deleting previous image ID:",
-          updatedUser.profileImagePublicId
-        );
-        await deleteFromCloudinary(updatedUser.profileImagePublicId);
-      }
+    const getSingleValue = (value) => (Array.isArray(value) ? value[0] : value);
 
-      const uploadResult = await uploadToCloudinary(
-        req.file.buffer,
-        "profileImage"
-      );
+    if (fullName) updatedUser.fullName = getSingleValue(fullName);
 
-      if (uploadResult && uploadResult.secure_url && uploadResult.public_id) {
-        updatedUser.profileImage = uploadResult.secure_url;
-        updatedUser.profileImagePublicId = uploadResult.public_id;
+    if (dob) {
+      const dobValue = getSingleValue(dob);
+      const parsedDob = moment(dobValue, "YYYY-MM-DD", true);
+      if (parsedDob.isValid()) {
+        updatedUser.dob = parsedDob.toDate();
       } else {
-        throw new Error("Upload to Cloudinary failed.");
+        return next(
+          new ApiError(
+            400,
+            "Invalid date format for DOB. Please use YYYY-MM-DD."
+          )
+        );
       }
-    } catch (error) {
-      return next(
-        new ApiError(500, "Image upload or deletion failed: " + error.message)
-      );
     }
-  }
 
-  await updatedUser.save();
+    if (nationality) updatedUser.nationality = getSingleValue(nationality);
+    if (gender) updatedUser.gender = getSingleValue(gender);
+    if (phoneNumber) updatedUser.phoneNumber = getSingleValue(phoneNumber);
 
-  const fetchedUser = await AuthModel.findById(userId).select(
-    "-__v -password -email"
-  );
-  if (!fetchedUser)
-    return next(new ApiError(404, "User not found after update."));
+    if (req.file) {
+      try {
+        // Handle previous profile image deletion if necessary
+        if (updatedUser.profileImagePublicId) {
+          await deleteFromCloudinary(updatedUser.profileImagePublicId);
+        }
 
-  res.status(200).json({
-    success: true,
-    message: "Profile updated successfully.",
-    user: {
-      ...fetchedUser.toObject(),
-      profileImage: fetchedUser.profileImage,
-      profileImagePublicId: fetchedUser.profileImagePublicId,
-    },
-  });
-});
+        // Upload new profile image to Cloudinary
+        const uploadResult = await uploadToCloudinary(
+          req.file.buffer,
+          "profileImage"
+        );
+        if (uploadResult && uploadResult.secure_url && uploadResult.public_id) {
+          updatedUser.profileImage = uploadResult.secure_url;
+          updatedUser.profileImagePublicId = uploadResult.public_id;
+        } else {
+          throw new Error("Upload to Cloudinary failed.");
+        }
+      } catch (error) {
+        return next(
+          new ApiError(500, "Image upload or deletion failed: " + error.message)
+        );
+      }
+    }
 
+    await updatedUser.save();
+
+    // Fetch the updated user without sensitive information
+    const fetchedUser = await AuthModel.findById(userId).select(
+      "-__v -password -email"
+    );
+    if (!fetchedUser)
+      return next(new ApiError(404, "User not found after update."));
+
+    res.status(200).json({
+      success: true,
+      message: "Profile updated successfully.",
+      user: {
+        ...fetchedUser.toObject(),
+        profileImage: fetchedUser.profileImage,
+        profileImagePublicId: fetchedUser.profileImagePublicId,
+      },
+    });
+  }),
+];
 
 export const changePassword = AsyncHandler(async (req, res, next) => {
   const userId = req.user.id;
@@ -241,9 +253,7 @@ export const changePassword = AsyncHandler(async (req, res, next) => {
 export const getProfile = AsyncHandler(async (req, res, next) => {
   const userId = req.user.id;
 
-  const userProfile = await AuthModel.findById(userId).select(
-    "-__v -password"
-  );
+  const userProfile = await AuthModel.findById(userId).select("-__v -password");
 
   if (!userProfile) {
     return next(new ApiError(404, "User not found."));

@@ -51,7 +51,6 @@ const authMiddleware = async (req, res, next) => {
       }
     }
 
-    // Handle any other errors with the access token
     return next(new ApiError(403, "Invalid access token"));
   }
 };

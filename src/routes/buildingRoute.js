@@ -22,6 +22,10 @@ app.post(
     { name: "modalImage", maxCount: 1 },
     { name: "restroomImages", maxCount: 10 },
   ]),
+  (req, res, next) => {
+    console.log("Images on backend from routes", req.files);
+    next();
+  },
   addBuilding
 );
 
